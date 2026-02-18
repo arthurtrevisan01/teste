@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+  <meta name="theme-color" content="#1f2937">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="https://img.icons8.com/ios-filled/192/4a90e2/dumbbell.png">
+  <title>HyperScience</title>
+  
+  <!-- Tailwind via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Estilo customizado -->
+  <link rel="stylesheet" href="style.css">
+  
+</head>
+<body class="bg-gray-900 text-white safe-area">
+  <!-- App container -->
+  <div id="app" class="p-4"></div>
+
+  <!-- Service Worker -->
+  <script>
+    if('serviceWorker' in navigator){
+      navigator.serviceWorker.register('./service-worker.js')
+        .then(()=>console.log('Service Worker registrado ✅'))
+        .catch(err=>console.error('Erro SW ❌',err));
+    }
+  </script>
+
+  <!-- Script do App -->
+  <script src="script.js"></script>
+</body>
+</html>
