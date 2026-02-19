@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>HyperScience Gym</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="style.css">
+    <!-- Ícones -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- Fonte Google -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <!-- Navegação Superior -->
+    <header class="top-nav">
+        <h1 id="page-title">HyperScience</h1>
+        <div id="user-greeting" style="font-size: 0.8rem; color: var(--primary-color);"></div>
+    </header>
+
+    <!-- Áreas de Conteúdo (Telas) -->
+    <main id="content">
+        <!-- Tela: Dashboard / Treinos -->
+        <section id="screen-workouts" class="active-screen">
+            <h2>Meus Treinos</h2>
+            <div id="workouts-list" class="list-container"></div>
+            <div class="empty-state" id="empty-workouts" style="display:none;">
+                <i class="fas fa-dumbbell"></i>
+                <p>Nenhum treino criado. Toque no + para começar!</p>
+            </div>
+        </section>
+
+        <!-- Tela: Exercícios -->
+        <section id="screen-exercises">
+            <h2>Banco de Exercícios</h2>
+            <div id="exercises-list" class="list-container"></div>
+        </section>
+
+        <!-- Tela: Histórico -->
+        <section id="screen-history">
+            <h2>Histórico</h2>
+            <div id="history-list" class="list-container"></div>
+        </section>
+
+        <!-- Tela: Configurações / Perfil -->
+        <section id="screen-settings">
+            <h2>Perfil & Dados</h2>
+            <div class="settings-card">
+                <label>Seu Nome</label>
+                <input type="text" id="username-input" placeholder="Digite seu nome">
+                <button onclick="saveName()" class="btn-outline">Salvar Nome</button>
+            </div>
+            
+            <div class="settings-card">
+                <h3>Backup dos Dados</h3>
+                <p style="font-size:0.8rem; color:#aaa;">Como não usamos servidor, use isso para salvar ou transferir seus dados.</p>
+                <button onclick="exportData()" class="btn-action"><i class="fas fa-download"></i> Exportar Dados</button>
+                <button onclick="importData()" class="btn-outline"><i class="fas fa-upload"></i> Importar Dados</button>
+            </div>
+            
+            <div class="settings-card danger-zone">
+                <button onclick="resetApp()" class="btn-danger">Zerar Tudo</button>
+            </div>
+        </section>
+    </main>
+
+    <!-- Botão Flutuante (FAB) -->
+    <button id="fab-add" class="fab"><i class="fas fa-plus"></i></button>
+
+    <!-- Navegação Inferior -->
+    <nav class="bottom-nav">
+        <button class="nav-item active" onclick="switchScreen('screen-workouts')">
+            <i class="fas fa-list-alt"></i>
+            <span>Treinos</span>
+        </button>
+        <button class="nav-item" onclick="switchScreen('screen-exercises')">
+            <i class="fas fa-running"></i>
+            <span>Exercícios</span>
+        </button>
+        <button class="nav-item" onclick="switchScreen('screen-history')">
+            <i class="fas fa-history"></i>
+            <span>Histórico</span>
+        </button>
+        <button class="nav-item" onclick="switchScreen('screen-settings')">
+            <i class="fas fa-user-cog"></i>
+            <span>Perfil</span>
+        </button>
+    </nav>
+
+    <!-- MODAL: Adicionar Exercício -->
+    <div id="modal-exercise" class="modal">
+        <div class="modal-content">
+            <h3>Novo Exercício</h3>
+            <input type="text" id="new-exercise-name" placeholder="Nome (ex: Supino Reto)">
+            <select id="new-exercise-group">
+                <option value="Peito">Peito</option>
+                <option value="Costas">Costas</option>
+                <option value="Pernas">Pernas</option>
+                <option value="Ombros">Ombros</option>
+                <option value="Braços">Braços</option>
+                <option value="Abs">Abdômen</option>
+                <option value="Cardio">Cardio</option>
+            </select>
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="closeModal('modal-exercise')">Cancelar</button>
+                <button class="btn-confirm" onclick="saveExercise()">Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Criar Treino -->
+    <div id="modal-workout" class="modal">
+        <div class="modal-content">
+            <h3>Novo Treino</h3>
+            <input type="text" id="new-workout-name" placeholder="Nome (ex: Treino A - Peito)">
+            <p>Selecione os exercícios:</p>
+            <div id="workout-exercise-select" class="checklist-container"></div>
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="closeModal('modal-workout')">Cancelar</button>
+                <button class="btn-confirm" onclick="saveWorkout()">Criar Treino</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: MODO TREINO (A Killer Feature) -->
+    <div id="modal-live-workout" class="modal full-screen-modal">
+        <div class="modal-content full-content">
+            <div class="live-header">
+                <h2 id="live-workout-title">Treinando</h2>
+                <button class="btn-close-live" onclick="closeLiveWorkout()"><i class="fas fa-times"></i></button>
+            </div>
+            
+            <!-- Timer Fixo -->
+            <div class="timer-card">
+                <span id="timer-display">00:00</span>
+                <div class="timer-controls">
+                    <button onclick="startRest(60)">60s</button>
+                    <button onclick="startRest(90)">90s</button>
+                    <button onclick="resetTimer()" style="background:#444;">Parar</button>
+                </div>
+            </div>
+
+            <div id="live-workout-list">
+                <!-- Lista de exercicios vai aqui via JS -->
+            </div>
+
+            <button class="btn-finish-workout" onclick="finishWorkout()">Finalizar Treino</button>
+        </div>
+    </div>
+
+    <!-- TOAST (Notificação) -->
+    <div id="toast" class="toast">Mensagem aqui</div>
+
+    <script src="script.js"></script>
+</body>
+</html>
