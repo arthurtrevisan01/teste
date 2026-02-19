@@ -1,0 +1,252 @@
+:root {
+    --bg-color: #121212;
+    --card-bg: #1e1e1e;
+    --primary-color: #00e676; /* Verde Neon */
+    --text-color: #e0e0e0;
+    --text-muted: #a0a0a0;
+    --danger-color: #ff5252;
+    --accent-color: #2979ff;
+    --nav-height: 60px;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Roboto', sans-serif;
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    padding-bottom: 80px; /* Espaço para nav bar */
+    overflow-x: hidden;
+}
+
+/* Header */
+.top-nav {
+    padding: 15px 20px;
+    background-color: var(--card-bg);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+h1 { font-size: 1.2rem; font-weight: 700; letter-spacing: 1px; }
+h2 { font-size: 1rem; margin-bottom: 15px; color: var(--primary-color); text-transform: uppercase;}
+
+/* Container Principal */
+#content {
+    padding: 20px;
+}
+
+section { display: none; animation: fadeIn 0.3s ease; }
+section.active-screen { display: block; }
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Listas e Cards */
+.list-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.card {
+    background-color: var(--card-bg);
+    padding: 15px;
+    border-radius: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    border-left: 3px solid var(--primary-color);
+}
+
+.card-content h3 { font-size: 1rem; margin-bottom: 4px; }
+.card-content p { font-size: 0.85rem; color: var(--text-muted); }
+
+.card-actions button {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 1.1rem;
+    padding: 5px 10px;
+    cursor: pointer;
+}
+.card-actions button.delete-btn { color: var(--danger-color); }
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: 50px 20px;
+    color: var(--text-muted);
+}
+.empty-state i { font-size: 3rem; margin-bottom: 15px; opacity: 0.5; }
+
+/* FAB Button */
+.fab {
+    position: fixed;
+    bottom: 80px;
+    right: 20px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background-color: var(--primary-color);
+    color: #000;
+    border: none;
+    font-size: 1.5rem;
+    box-shadow: 0 4px 10px rgba(0, 230, 118, 0.4);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s;
+    z-index: 90;
+}
+.fab:active { transform: scale(0.9); }
+
+/* Bottom Nav */
+.bottom-nav {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    height: var(--nav-height);
+    background-color: var(--card-bg);
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    border-top: 1px solid #333;
+    z-index: 100;
+}
+
+.nav-item {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-size: 0.75rem;
+    cursor: pointer;
+}
+.nav-item i { font-size: 1.2rem; margin-bottom: 4px; }
+.nav-item.active { color: var(--primary-color); }
+
+/* Modais */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.8);
+    z-index: 200;
+    justify-content: center;
+    align-items: center;
+}
+.modal-content {
+    background: var(--card-bg);
+    width: 90%;
+    max-width: 400px;
+    padding: 20px;
+    border-radius: 15px;
+    animation: slideUp 0.3s ease;
+}
+
+/* Modo Treino Full Screen */
+.full-screen-modal { z-index: 300; }
+.full-content { 
+    width: 100%; height: 100%; max-width: none; border-radius: 0; 
+    display: flex; flex-direction: column; padding: 20px; overflow-y: auto;
+}
+
+.live-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.btn-close-live { background: none; border: none; color: white; font-size: 1.5rem; }
+
+/* Timer */
+.timer-card {
+    background: #2a2a2a;
+    padding: 15px;
+    border-radius: 10px;
+    text-align: center;
+    margin-bottom: 20px;
+    border: 1px solid #444;
+}
+#timer-display { font-size: 2.5rem; font-weight: bold; font-family: monospace; display: block; margin-bottom: 10px; color: var(--primary-color); }
+.timer-controls button {
+    background: var(--accent-color);
+    border: none; color: white; padding: 8px 15px; border-radius: 5px; margin: 0 5px; font-weight: bold;
+}
+
+/* Checklist do Treino */
+.live-exercise-card {
+    background: #252525;
+    padding: 15px;
+    border-radius: 10px;
+    margin-bottom: 15px;
+}
+.live-exercise-title { font-weight: bold; margin-bottom: 10px; display: block; color: var(--primary-color);}
+.set-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+    gap: 10px;
+}
+.set-check { width: 25px; height: 25px; accent-color: var(--primary-color); }
+.rpe-input { 
+    width: 60px; background: #333; border: 1px solid #555; 
+    color: white; padding: 5px; text-align: center; border-radius: 4px; 
+}
+.weight-input { 
+    width: 70px; background: #333; border: 1px solid #555; 
+    color: white; padding: 5px; text-align: center; border-radius: 4px; 
+}
+
+/* Cores do RPE Dinâmicas */
+.rpe-input[data-val="1"], .rpe-input[data-val="2"], .rpe-input[data-val="3"], .rpe-input[data-val="4"], .rpe-input[data-val="5"] { color: white; border-color: white; }
+.rpe-input[data-val="6"], .rpe-input[data-val="7"] { color: #ff9800; border-color: #ff9800; font-weight: bold; }
+.rpe-input[data-val="8"], .rpe-input[data-val="9"], .rpe-input[data-val="10"] { color: #ff5252; border-color: #ff5252; font-weight: bold; }
+
+/* Inputs Gerais */
+input, select {
+    width: 100%; padding: 12px; margin: 10px 0;
+    background: #333; border: 1px solid #444; color: white; border-radius: 8px; font-size: 1rem;
+}
+input:focus { outline: 2px solid var(--primary-color); }
+
+/* Botões */
+.modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+button { cursor: pointer; border-radius: 8px; font-weight: bold; }
+.btn-confirm, .btn-finish-workout { flex: 1; background: var(--primary-color); border: none; padding: 12px; color: black; }
+.btn-cancel { flex: 1; background: #333; border: none; color: white; padding: 12px; }
+.btn-danger { width: 100%; background: #ff5252; color: white; border: none; padding: 12px; margin-top: 10px; }
+.btn-outline { width: 100%; background: transparent; border: 1px solid var(--primary-color); color: var(--primary-color); padding: 12px; margin-top: 10px; }
+.btn-action { width: 100%; background: var(--accent-color); color: white; border: none; padding: 12px; margin-top: 10px; }
+
+/* Toast */
+.toast {
+    visibility: hidden;
+    min-width: 250px;
+    background-color: var(--primary-color);
+    color: #000;
+    font-weight: bold;
+    text-align: center;
+    border-radius: 50px;
+    padding: 16px;
+    position: fixed;
+    z-index: 500;
+    left: 50%;
+    bottom: 80px;
+    transform: translateX(-50%);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+}
+.toast.show { visibility: visible; animation: fadein 0.5s, fadeout 0.5s 2.5s; }
+
+@keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 80px; opacity: 1;} }
+@keyframes fadeout { from {bottom: 80px; opacity: 1;} to {bottom: 0; opacity: 0;} }
