@@ -1,211 +1,62 @@
-// --- ESTADO DO APP ---
-let appData = {
-    user: '',
-    exercises: [], // {id, name, group}
-    workouts: [],  // {id, name, exerciseIds: []}
-    history: []    // {date, workoutName, details: []}
+// --- DADOS E INICIALIZAÇÃO ---
+let db = {
+    exercises: [],
+    workouts: [],
+    history: []
 };
 
-// --- INICIALIZAÇÃO ---
-document.addEventListener('DOMContentLoaded', () => {
+window.onload = function() {
     loadData();
     renderAll();
-    setupNavigation();
-});
+};
 
-// --- SISTEMA DE DADOS (LOCAL STORAGE) ---
 function loadData() {
-    const saved = localStorage.getItem('hyperGymData');
-    if (saved) {
-        appData = JSON.parse(saved);
+    let saved = localStorage.getItem('hyperGymDB');
+    if(saved) {
+        db = JSON.parse(saved);
     } else {
-        // Dados iniciais padrão para não ficar vazio
-        appData.exercises = [
-            { id: 1, name: 'Supino Reto', group: 'Peito' },
-            { id: 2, name: 'Agachamento Livre', group: 'Pernas' },
-            { id: 3, name: 'Puxada Alta', group: 'Costas' }
+        // Dados de exemplo se for a primeira vez
+        db.exercises = [
+            {id: 1, name: "Supino Reto", group: "Peito"},
+            {id: 2, name: "Agachamento", group: "Pernas"}
         ];
     }
-    updateGreeting();
 }
 
 function saveData() {
-    localStorage.setItem('hyperGymData', JSON.stringify(appData));
-}
-
-function updateGreeting() {
-    const display = document.getElementById('user-greeting');
-    if (appData.user) {
-        display.textContent = `Olá, ${appData.user}`;
-        document.getElementById('username-input').value = appData.user;
-    }
-}
-
-function saveName() {
-    const name = document.getElementById('username-input').value;
-    if (name) {
-        appData.user = name;
-        saveData();
-        updateGreeting();
-        showToast('Nome salvo com sucesso!');
-    }
+    localStorage.setItem('hyperGymDB', JSON.stringify(db));
 }
 
 // --- NAVEGAÇÃO ---
-function setupNavigation() {
-    // FAB Button logic
-    document.getElementById('fab-add').addEventListener('click', () => {
-        const active = document.querySelector('.active-screen').id;
-        if (active === 'screen-workouts') openModal('modal-workout');
-        if (active === 'screen-exercises') openModal('modal-exercise');
-    });
-}
-
-function switchScreen(screenId) {
-    // Esconde todas
-    document.querySelectorAll('main section').forEach(s => s.classList.remove('active-screen'));
-    // Mostra a certa
-    document.getElementById(screenId).classList.add('active-screen');
+function switchTab(tabId) {
+    // Esconde todas as seções
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    // Mostra a selecionada
+    document.getElementById(tabId).classList.add('active');
     
-    // Atualiza botões da nav
-    document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
-    document.querySelector(`button[onclick="switchScreen('${screenId}')"]`).classList.add('active');
+    // Atualiza botões
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    // Lógica simples para ativar o ícone correto
+    if(tabId.includes('workouts')) document.querySelectorAll('.nav-btn')[0].classList.add('active');
+    if(tabId.includes('exercises')) document.querySelectorAll('.nav-btn')[1].classList.add('active');
+    if(tabId.includes('history')) document.querySelectorAll('.nav-btn')[2].classList.add('active');
 
-    // Esconde/Mostra FAB dependendo da tela
-    const fab = document.getElementById('fab-add');
-    if (screenId === 'screen-history' || screenId === 'screen-settings') {
-        fab.style.display = 'none';
-    } else {
+    // FAB Button logic: Só aparece em treinos e exercícios
+    const fab = document.getElementById('fab');
+    if(tabId === 'tab-workouts' || tabId === 'tab-exercises') {
         fab.style.display = 'flex';
-    }
-}
-
-// --- RENDERIZAÇÃO ---
-function renderAll() {
-    renderExercises();
-    renderWorkouts();
-    renderHistory();
-}
-
-function renderExercises() {
-    const list = document.getElementById('exercises-list');
-    list.innerHTML = '';
-    
-    appData.exercises.forEach(ex => {
-        const card = document.createElement('div');
-        card.className = 'card';
-        card.innerHTML = `
-            <div class="card-content">
-                <h3>${ex.name}</h3>
-                <p>${ex.group}</p>
-            </div>
-            <div class="card-actions">
-                <button class="delete-btn" onclick="deleteExercise(${ex.id})"><i class="fas fa-trash"></i></button>
-            </div>
-        `;
-        list.appendChild(card);
-    });
-}
-
-function renderWorkouts() {
-    const list = document.getElementById('workouts-list');
-    const emptyState = document.getElementById('empty-workouts');
-    list.innerHTML = '';
-
-    if (appData.workouts.length === 0) {
-        emptyState.style.display = 'block';
     } else {
-        emptyState.style.display = 'none';
-        appData.workouts.forEach(w => {
-            const card = document.createElement('div');
-            card.className = 'card';
-            card.style.cursor = 'pointer';
-            // Clicar no card abre o modo treino
-            card.onclick = (e) => {
-                if(!e.target.closest('button')) startLiveWorkout(w.id);
-            };
-            
-            const exerciseCount = w.exerciseIds.length;
-            card.innerHTML = `
-                <div class="card-content">
-                    <h3>${w.name}</h3>
-                    <p>${exerciseCount} exercícios</p>
-                </div>
-                <div class="card-actions">
-                    <button class="delete-btn" onclick="deleteWorkout(${w.id})"><i class="fas fa-trash"></i></button>
-                </div>
-            `;
-            list.appendChild(card);
-        });
+        fab.style.display = 'none';
     }
 }
 
-function renderHistory() {
-    const list = document.getElementById('history-list');
-    list.innerHTML = '';
-    // Mostrar os mais recentes primeiro
-    const reversedHistory = [...appData.history].reverse();
-    
-    reversedHistory.forEach((h, index) => {
-        const card = document.createElement('div');
-        card.className = 'card';
-        card.innerHTML = `
-            <div class="card-content">
-                <h3>${h.workoutName}</h3>
-                <p>${h.date}</p>
-            </div>
-        `;
-        list.appendChild(card);
-    });
-}
-
-// --- LOGICA: EXERCÍCIOS ---
-function saveExercise() {
-    const name = document.getElementById('new-exercise-name').value;
-    const group = document.getElementById('new-exercise-group').value;
-
-    if (!name) return showToast('Digite um nome para o exercício!');
-
-    const newEx = {
-        id: Date.now(),
-        name: name,
-        group: group
-    };
-
-    appData.exercises.push(newEx);
-    saveData();
-    renderExercises();
-    closeModal('modal-exercise');
-    document.getElementById('new-exercise-name').value = '';
-    showToast('Exercício salvo com sucesso!');
-}
-
-function deleteExercise(id) {
-    if (confirm('Tem certeza que deseja excluir este exercício?')) {
-        appData.exercises = appData.exercises.filter(e => e.id !== id);
-        saveData();
-        renderExercises();
-        showToast('Exercício excluído.');
-    }
-}
-
-// --- LOGICA: TREINOS ---
-function openModal(id) {
-    document.getElementById(id).style.display = 'flex';
-    
-    if (id === 'modal-workout') {
-        // Popula checklist de exercicios
-        const container = document.getElementById('workout-exercise-select');
-        container.innerHTML = '';
-        appData.exercises.forEach(ex => {
-            const div = document.createElement('div');
-            div.style.padding = '5px';
-            div.innerHTML = `
-                <input type="checkbox" value="${ex.id}" id="chk-${ex.id}">
-                <label for="chk-${ex.id}">${ex.name}</label>
-            `;
-            container.appendChild(div);
-        });
+function handleFabClick() {
+    const activeTab = document.querySelector('.tab-content.active').id;
+    if(activeTab === 'tab-exercises') {
+        document.getElementById('modal-exercise').style.display = 'flex';
+    } else if (activeTab === 'tab-workouts') {
+        renderChecklist();
+        document.getElementById('modal-workout').style.display = 'flex';
     }
 }
 
@@ -213,198 +64,265 @@ function closeModal(id) {
     document.getElementById(id).style.display = 'none';
 }
 
-function saveWorkout() {
-    const name = document.getElementById('new-workout-name').value;
-    if (!name) return showToast('Dê um nome ao treino!');
-
-    const selectedCheckboxes = document.querySelectorAll('#workout-exercise-select input:checked');
-    if (selectedCheckboxes.length === 0) return showToast('Selecione pelo menos um exercício!');
-
-    const selectedIds = Array.from(selectedCheckboxes).map(cb => parseInt(cb.value));
-
-    const newWorkout = {
-        id: Date.now(),
-        name: name,
-        exerciseIds: selectedIds
-    };
-
-    appData.workouts.push(newWorkout);
-    saveData();
-    renderWorkouts();
-    closeModal('modal-workout');
-    document.getElementById('new-workout-name').value = '';
-    showToast('Treino criado com sucesso!');
+// --- TOAST (Feedback Visual) ---
+function showToast(msg) {
+    const x = document.getElementById("toast");
+    x.textContent = msg;
+    x.className = "show";
+    setTimeout(function(){ x.className = x.className.replace("show", ""); }, 3000);
 }
 
-function deleteWorkout(id) {
-    if (confirm('Apagar este treino?')) {
-        appData.workouts = appData.workouts.filter(w => w.id !== id);
+// --- EXERCÍCIOS ---
+function addExercise() {
+    const name = document.getElementById('input-ex-name').value;
+    const group = document.getElementById('input-ex-group').value;
+    
+    if(!name) return showToast("Digite um nome!");
+
+    db.exercises.push({ id: Date.now(), name, group });
+    saveData();
+    renderAll();
+    closeModal('modal-exercise');
+    document.getElementById('input-ex-name').value = '';
+    document.getElementById('input-ex-group').value = '';
+    showToast("Exercício salvo!");
+}
+
+function deleteExercise(id) {
+    if(confirm("Tem certeza que deseja apagar?")) { // Prevenção de erro
+        db.exercises = db.exercises.filter(e => e.id !== id);
         saveData();
-        renderWorkouts();
-        showToast('Treino apagado.');
+        renderAll();
+        showToast("Exercício apagado.");
     }
 }
 
-// --- KILLER FEATURE: MODO TREINO AO VIVO ---
-let currentTimer = null;
-let timerValue = 0;
-
-function startLiveWorkout(workoutId) {
-    const workout = appData.workouts.find(w => w.id === workoutId);
-    if (!workout) return;
-
-    document.getElementById('live-workout-title').textContent = workout.name;
-    const container = document.getElementById('live-workout-list');
+// --- TREINOS ---
+function renderChecklist() {
+    const container = document.getElementById('workout-checklist');
     container.innerHTML = '';
+    db.exercises.forEach(ex => {
+        container.innerHTML += `
+            <div style="margin-bottom:5px;">
+                <input type="checkbox" value="${ex.id}" id="chk_${ex.id}" style="width:auto; margin-right:10px;">
+                <label for="chk_${ex.id}">${ex.name}</label>
+            </div>
+        `;
+    });
+}
 
-    workout.exerciseIds.forEach(exId => {
-        const ex = appData.exercises.find(e => e.id === exId);
-        if (ex) {
-            const exDiv = document.createElement('div');
-            exDiv.className = 'live-exercise-card';
-            
-            // Criar 3 séries padrão (pode ajustar depois se quiser mais complexidade)
-            let setsHtml = '';
-            for(let i=1; i<=3; i++) {
-                setsHtml += `
+function addWorkout() {
+    const name = document.getElementById('input-wk-name').value;
+    if(!name) return showToast("Digite um nome para o treino!");
+    
+    const checkboxes = document.querySelectorAll('#workout-checklist input:checked');
+    if(checkboxes.length === 0) return showToast("Selecione exercícios!");
+
+    const selectedIds = Array.from(checkboxes).map(c => parseInt(c.value));
+    
+    db.workouts.push({ id: Date.now(), name, exIds: selectedIds });
+    saveData();
+    renderAll();
+    closeModal('modal-workout');
+    document.getElementById('input-wk-name').value = '';
+    showToast("Treino Criado!");
+}
+
+function deleteWorkout(id) {
+    if(confirm("Deseja excluir este treino?")) { // Prevenção de erro
+        db.workouts = db.workouts.filter(w => w.id !== id);
+        saveData();
+        renderAll();
+        showToast("Treino excluído.");
+    }
+}
+
+// --- RENDERIZAR LISTAS ---
+function renderAll() {
+    // Render Exercicios
+    const exList = document.getElementById('exercises-list');
+    exList.innerHTML = '';
+    db.exercises.forEach(ex => {
+        exList.innerHTML += `
+            <div class="card">
+                <div>
+                    <h3>${ex.name}</h3>
+                    <p>${ex.group || 'Geral'}</p>
+                </div>
+                <div class="card-actions">
+                    <button onclick="deleteExercise(${ex.id})"><i class="fas fa-trash"></i></button>
+                </div>
+            </div>
+        `;
+    });
+
+    // Render Treinos
+    const wkList = document.getElementById('workouts-list');
+    wkList.innerHTML = '';
+    if(db.workouts.length === 0) document.getElementById('empty-workouts').style.display = 'block';
+    else document.getElementById('empty-workouts').style.display = 'none';
+
+    db.workouts.forEach(wk => {
+        wkList.innerHTML += `
+            <div class="card">
+                <div>
+                    <h3>${wk.name}</h3>
+                    <p>${wk.exIds.length} exercícios</p>
+                </div>
+                <div class="card-actions" style="display:flex; gap:10px;">
+                    <button onclick="startLiveMode(${wk.id})" style="color:var(--primary-color); font-weight:bold;">
+                        INICIAR <i class="fas fa-play"></i>
+                    </button>
+                    <button onclick="deleteWorkout(${wk.id})"><i class="fas fa-trash"></i></button>
+                </div>
+            </div>
+        `;
+    });
+
+    // Render Historico
+    const histList = document.getElementById('history-list');
+    histList.innerHTML = '';
+    const reversed = [...db.history].reverse();
+    reversed.forEach(h => {
+        histList.innerHTML += `
+            <div class="card">
+                <div>
+                    <h3>${h.workoutName}</h3>
+                    <p>${h.date}</p>
+                </div>
+            </div>
+        `;
+    });
+}
+
+// --- BACKUP / IMPORT / EXPORT (Mecanismo de Login Simples) ---
+function exportData() {
+    const dataStr = JSON.stringify(db);
+    const blob = new Blob([dataStr], {type: "application/json"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = "backup_gym.json";
+    a.click();
+    showToast("Backup baixado!");
+}
+
+function importData(input) {
+    const file = input.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            db = JSON.parse(e.target.result);
+            saveData();
+            renderAll();
+            showToast("Dados restaurados com sucesso!");
+        } catch(err) {
+            showToast("Erro no arquivo.");
+        }
+    };
+    reader.readAsText(file);
+}
+
+function resetAllData() {
+    if(confirm("ISSO APAGARÁ TUDO! Tem certeza?")) {
+        localStorage.removeItem('hyperGymDB');
+        location.reload();
+    }
+}
+
+// ==========================================================
+// --- MODO TREINO AO VIVO (A KILLER FEATURE) ---
+// ==========================================================
+let currentTimerInterval = null;
+let timerSeconds = 0;
+
+function startLiveMode(workoutId) {
+    const workout = db.workouts.find(w => w.id === workoutId);
+    if(!workout) return;
+
+    document.getElementById('live-title').innerText = workout.name;
+    const list = document.getElementById('live-exercises-list');
+    list.innerHTML = '';
+
+    // Renderiza exercícios com checkboxes
+    workout.exIds.forEach(exId => {
+        const ex = db.exercises.find(e => e.id === exId);
+        if(ex) {
+            let setsHTML = '';
+            for(let i=1; i<=3; i++) { // 3 séries padrão
+                setsHTML += `
                     <div class="set-row">
-                        <span style="color:#aaa; width:20px;">#${i}</span>
+                        <span style="color:#666; font-size:0.8rem;">S${i}</span>
                         <input type="checkbox" class="set-check">
-                        <input type="number" placeholder="kg" class="weight-input">
-                        <input type="number" placeholder="RPE" class="rpe-input" oninput="updateRPEColor(this)">
+                        <input type="number" placeholder="kg" class="input-mini">
+                        <input type="number" placeholder="RPE" class="input-mini rpe-input" oninput="updateRPE(this)">
                     </div>
                 `;
             }
 
-            exDiv.innerHTML = `
-                <span class="live-exercise-title">${ex.name}</span>
-                ${setsHtml}
+            list.innerHTML += `
+                <div class="live-card">
+                    <h3 style="color:var(--primary-color)">${ex.name}</h3>
+                    ${setsHTML}
+                </div>
             `;
-            container.appendChild(exDiv);
         }
     });
 
-    document.getElementById('modal-live-workout').style.display = 'flex';
+    document.getElementById('modal-live').style.display = 'flex';
 }
 
-function closeLiveWorkout() {
+function closeLiveMode() {
     if(confirm("Sair do treino? O progresso não salvo será perdido.")) {
-        document.getElementById('modal-live-workout').style.display = 'none';
-        resetTimer();
+        document.getElementById('modal-live').style.display = 'none';
+        stopTimer();
     }
 }
 
-function finishWorkout() {
-    const workoutName = document.getElementById('live-workout-title').textContent;
+function finishLiveWorkout() {
+    const name = document.getElementById('live-title').innerText;
     const today = new Date().toLocaleDateString('pt-BR');
     
-    appData.history.push({
-        date: today,
-        workoutName: workoutName
-    });
-    
+    db.history.push({ workoutName: name, date: today });
     saveData();
-    renderHistory();
+    renderAll();
     
-    document.getElementById('modal-live-workout').style.display = 'none';
-    resetTimer();
-    
-    showToast('Treino Finalizado! Bom trabalho 💪');
-    switchScreen('screen-history');
+    document.getElementById('modal-live').style.display = 'none';
+    stopTimer();
+    showToast("Treino finalizado! Parabéns!");
+    switchTab('tab-history');
 }
 
-// --- TIMER E UTILITÁRIOS ---
-function startRest(seconds) {
-    clearInterval(currentTimer);
-    timerValue = seconds;
-    updateTimerDisplay();
-    
-    currentTimer = setInterval(() => {
-        timerValue--;
-        updateTimerDisplay();
-        if (timerValue <= 0) {
-            clearInterval(currentTimer);
-            // Vibrar celular se suportado
-            if(navigator.vibrate) navigator.vibrate(500);
-            showToast('Descanso acabou!');
+// Timer Logic
+function startTimer(sec) {
+    stopTimer();
+    timerSeconds = sec;
+    updateTimerVis();
+    currentTimerInterval = setInterval(() => {
+        timerSeconds--;
+        updateTimerVis();
+        if(timerSeconds <= 0) {
+            stopTimer();
+            if(navigator.vibrate) navigator.vibrate([500, 200, 500]); // Vibrar
+            showToast("Tempo esgotado!");
         }
     }, 1000);
 }
 
-function resetTimer() {
-    clearInterval(currentTimer);
-    timerValue = 0;
-    updateTimerDisplay();
+function stopTimer() {
+    clearInterval(currentTimerInterval);
+    timerSeconds = 0;
+    updateTimerVis();
 }
 
-function updateTimerDisplay() {
-    const min = Math.floor(timerValue / 60);
-    const sec = timerValue % 60;
-    document.getElementById('timer-display').textContent = 
-        `${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+function updateTimerVis() {
+    const m = Math.floor(timerSeconds / 60).toString().padStart(2,'0');
+    const s = (timerSeconds % 60).toString().padStart(2,'0');
+    document.getElementById('timer-display').innerText = `${m}:${s}`;
 }
 
-// Muda cor do RPE dinamicamente
-function updateRPEColor(input) {
-    const val = parseInt(input.value);
-    input.setAttribute('data-val', val);
-}
-
-function showToast(message) {
-    const x = document.getElementById("toast");
-    x.textContent = message;
-    x.className = "toast show";
-    setTimeout(function(){ x.className = x.className.replace("show", ""); }, 3000);
-}
-
-// --- BACKUP E IMPORTAÇÃO ---
-function exportData() {
-    const dataStr = JSON.stringify(appData);
-    const blob = new Blob([dataStr], {type: "application/json"});
-    const url = URL.createObjectURL(blob);
-    
-    // Cria link invisivel para download
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `backup_gym_${new Date().toISOString().slice(0,10)}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    showToast('Arquivo de backup baixado!');
-}
-
-function importData() {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'application/json';
-    
-    input.onchange = e => {
-        const file = e.target.files[0];
-        const reader = new FileReader();
-        reader.onload = event => {
-            try {
-                const data = JSON.parse(event.target.result);
-                if (data.exercises && data.workouts) {
-                    appData = data;
-                    saveData();
-                    renderAll();
-                    updateGreeting();
-                    showToast('Dados importados com sucesso!');
-                } else {
-                    showToast('Arquivo inválido!');
-                }
-            } catch (err) {
-                showToast('Erro ao ler arquivo.');
-            }
-        };
-        reader.readAsText(file);
-    };
-    input.click();
-}
-
-function resetApp() {
-    if(confirm("ATENÇÃO: Isso vai apagar TUDO. Tem certeza?")) {
-        localStorage.removeItem('hyperGymData');
-        location.reload();
-    }
+// RPE Color Logic
+function updateRPE(input) {
+    input.setAttribute('data-val', input.value);
 }
