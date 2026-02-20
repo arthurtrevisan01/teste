@@ -691,6 +691,7 @@
 </div><p>Nenhum treino registrado.</p></div>`;
                 return;
             }
+        renderGraficoHistorico();
             let html = `<div class="fade-in pb-20"><h2 class="text-2xl font-bold mb-6">Seu Histórico</h2><div class="space-y-4">`;
             appState.history.forEach(w => {
                 const date = new Date(w.startTime);
