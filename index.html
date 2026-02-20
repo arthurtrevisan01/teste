@@ -685,7 +685,10 @@
         // 6. HISTÓRICO
         function renderHistory(container) {
             if(appState.history.length === 0) {
-                container.innerHTML = `<div class="fade-in text-center mt-32 text-gray-500"><p>Nenhum treino registrado.</p></div>`;
+                container.innerHTML = `<div class="fade-in text-center mt-32 text-gray-500"><div class="card">
+  <h2>Evolução de Volume</h2>
+  <canvas id="graficoHistorico"></canvas>
+</div><p>Nenhum treino registrado.</p></div>`;
                 return;
             }
             let html = `<div class="fade-in pb-20"><h2 class="text-2xl font-bold mb-6">Seu Histórico</h2><div class="space-y-4">`;
