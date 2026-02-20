@@ -1,16 +1,773 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>HyperScience Gym</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>HyperScience PWA 2.1</title>
+    <link rel="manifest" href="manifest.json">
+    <script src="https://cdn.tailwindcss.com"></script>
 
-  <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="styles/main.css" />
+    <!-- Ícone para iOS -->
+    <link rel="apple-touch-icon" href="https://img.icons8.com/ios-filled/180/4a90e2/dumbbell.png">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+
+    <style>
+        body {
+            -webkit-tap-highlight-color: transparent;
+            overscroll-behavior-y: none;
+            background-color: #111827;
+            color: #f3f4f6;
+        }
+        .safe-area-pb { padding-bottom: env(safe-area-inset-bottom); }
+        
+        /* Animações */
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .card {
+            background: #1f2937;
+            border-radius: 1rem;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            transition: all 0.2s;
+        }
+        .card:active { transform: scale(0.99); }
+
+        /* Inputs */
+        input[type="number"] {
+            background: #374151;
+            color: white;
+            border: 1px solid #4b5563;
+            border-radius: 0.5rem;
+            padding: 0.5rem;
+            width: 100%;
+            text-align: center;
+            font-size: 1.1rem;
+            transition: all 0.2s;
+        }
+        input:focus { outline: 2px solid #60a5fa; border-color: transparent; }
+
+        /* Classes de Cores RPE (Dinâmicas) */
+        .rpe-low { color: #ffffff !important; border-color: #4b5563 !important; }
+        .rpe-med { color: #fb923c !important; border-color: #fb923c !important; font-weight: bold; } /* Laranja */
+        .rpe-high { color: #f87171 !important; border-color: #ef4444 !important; font-weight: bold; } /* Vermelho */
+
+        /* Checkbox Customizado */
+        .custom-checkbox {
+            width: 24px; height: 24px;
+            border: 2px solid #4b5563;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+        }
+        .custom-checkbox.checked {
+            background-color: #10b981; /* Verde */
+            border-color: #10b981;
+        }
+
+        /* Modal */
+        #modal-overlay {
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(4px);
+        }
+
+        /* Toast Notification */
+        #toast {
+            visibility: hidden;
+            min-width: 250px;
+            background-color: #1f2937;
+            color: #fff;
+            text-align: center;
+            border-radius: 50px;
+            padding: 16px;
+            position: fixed;
+            z-index: 100;
+            left: 50%;
+            bottom: 90px;
+            transform: translateX(-50%);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            border: 1px solid #60a5fa;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        #toast.show {
+            visibility: visible;
+            opacity: 1;
+        }
+    </style>
 </head>
-<body>
-  <div id="app"></div>
+<body class="font-sans antialiased pb-24 select-none">
 
-  <script type="module" src="src/app.js"></script>
+    <!-- Header -->
+    <header class="fixed top-0 w-full bg-gray-800 p-4 shadow-lg z-40 flex justify-between items-center border-b border-gray-700">
+        <h1 class="text-xl font-bold text-blue-400 tracking-tighter cursor-pointer" onclick="router('home')">HYPER<span class="text-white">SCIENCE</span></h1>
+        <div class="flex items-center gap-2">
+            <span id="page-title" class="text-xs text-gray-400 font-mono">v2.1</span>
+            <div id="status-indicator" class="w-2 h-2 rounded-full bg-green-500"></div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="mt-20 px-4 container mx-auto max-w-md" id="app">
+        <!-- Views injetadas aqui -->
+    </main>
+
+    <!-- Modal de Troca de Exercício -->
+    <div id="swap-modal" class="hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center pointer-events-none">
+        <div id="modal-overlay" class="absolute inset-0 pointer-events-auto" onclick="closeModal()"></div>
+        <div class="bg-gray-800 w-full max-w-md p-6 rounded-t-2xl sm:rounded-xl relative z-10 transform transition-transform pointer-events-auto border-t border-gray-600 shadow-2xl">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-white">Substituir Exercício</h3>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+            </div>
+            <p class="text-sm text-gray-400 mb-4">Selecione uma variação biomecânica equivalente:</p>
+            <div id="swap-list" class="space-y-2 max-h-[60vh] overflow-y-auto pr-2">
+                <!-- Lista gerada via JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST Notification -->
+    <div id="toast">Notificação</div>
+
+    <!-- Navigation -->
+    <nav class="fixed bottom-0 w-full bg-gray-800 border-t border-gray-700 flex justify-around py-3 z-40 safe-area-pb">
+        <button onclick="router('home')" class="nav-btn flex flex-col items-center text-gray-400 hover:text-blue-400 transition">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+            <span class="text-[10px] mt-1 uppercase tracking-wider">Treinar</span>
+        </button>
+        <button onclick="router('history')" class="nav-btn flex flex-col items-center text-gray-400 hover:text-blue-400 transition">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+            <span class="text-[10px] mt-1 uppercase tracking-wider">Histórico</span>
+        </button>
+        <button onclick="router('settings')" class="nav-btn flex flex-col items-center text-gray-400 hover:text-blue-400 transition">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+            <span class="text-[10px] mt-1 uppercase tracking-wider">Dados</span>
+        </button>
+    </nav>
+
+    <script>
+        // ==========================================
+        // DADOS CIENTÍFICOS & EXERCÍCIOS
+        // ==========================================
+        
+        // Categoria de Movimento (Mantido Original)
+        const EXERCISE_DB = {
+            'horizontal_push': { name: 'Empurrar Horizontal (Peito)', exercises: ['Supino Reto (Barra)', 'Supino Reto (Halteres)', 'Supino Máquina', 'Flexão de Braço', 'Supino Smith'] },
+            'incline_push': { name: 'Empurrar Inclinado (Superior)', exercises: ['Supino Inclinado (Halteres)', 'Supino Inclinado (Barra)', 'Supino Inclinado Máquina', 'Smith Inclinado'] },
+            'vertical_push': { name: 'Empurrar Vertical (Ombros)', exercises: ['Desenvolvimento (Halteres)', 'Desenvolvimento Militar (Barra)', 'Desenvolvimento Máquina', 'Elevação Frontal'] },
+            'isolation_chest': { name: 'Isolamento Peito', exercises: ['Crucifixo (Peck Deck)', 'Crucifixo (Halteres)', 'Crossover Polia Alta', 'Crossover Polia Baixa'] },
+            'isolation_delt': { name: 'Isolamento Ombro', exercises: ['Elevação Lateral (Halteres)', 'Elevação Lateral (Polia)', 'Elevação Lateral (Máquina)', 'Face Pull'] },
+            'triceps': { name: 'Tríceps', exercises: ['Tríceps Polia (Corda)', 'Tríceps Testa', 'Tríceps Francês', 'Paralelas', 'Tríceps Coice'] },
+            'vertical_pull': { name: 'Puxada Vertical (Dorsal)', exercises: ['Puxada Alta (Frente)', 'Barra Fixa', 'Puxada Triângulo', 'Graviton'] },
+            'horizontal_pull': { name: 'Remada (Espessura)', exercises: ['Remada Curvada (Barra)', 'Remada Unilateral (Serrote)', 'Remada Baixa (Triângulo)', 'Remada Máquina'] },
+            'biceps': { name: 'Bíceps', exercises: ['Rosca Direta (Barra)', 'Rosca Alternada (Halteres)', 'Rosca Scott', 'Rosca Martelo', 'Rosca Polia'] },
+            'squat_pattern': { name: 'Agachamento (Quadríceps)', exercises: ['Agachamento Livre', 'Leg Press 45', 'Hack Machine', 'Agachamento Búlgaro', 'Passada'] },
+            'hinge_pattern': { name: 'Extensão de Quadril (Posterior)', exercises: ['Levantamento Terra', 'Stiff', 'RDL (Romanian Deadlift)', 'Elevação Pélvica'] },
+            'isolation_leg': { name: 'Isolamento Perna', exercises: ['Cadeira Extensora', 'Mesa Flexora', 'Cadeira Flexora', 'Cadeira Adutora'] },
+            'calves': { name: 'Panturrilhas', exercises: ['Panturrilha em Pé', 'Panturrilha Sentado', 'Panturrilha Leg Press'] },
+            'abs': { name: 'Abdômen', exercises: ['Abdominal Infra', 'Abdominal Supra (Máquina)', 'Prancha', 'Lenhador (Polia)'] }
+        };
+
+        const WORKOUT_PLANS = {
+            'ppl': {
+                name: 'PPL (Push/Pull/Legs)',
+                desc: 'Alta frequência, divisão clássica.',
+                days: [
+                    { id: 'push', name: 'Empurrar (Peito/Ombro/Tríceps)', default_exercises: [{ cat: 'horizontal_push', ex: 'Supino Reto (Barra)' }, { cat: 'incline_push', ex: 'Supino Inclinado (Halteres)' }, { cat: 'vertical_push', ex: 'Desenvolvimento (Halteres)' }, { cat: 'isolation_delt', ex: 'Elevação Lateral (Halteres)' }, { cat: 'isolation_chest', ex: 'Crucifixo (Peck Deck)' }, { cat: 'triceps', ex: 'Tríceps Polia (Corda)' }] },
+                    { id: 'pull', name: 'Puxar (Costas/Bíceps)', default_exercises: [{ cat: 'vertical_pull', ex: 'Puxada Alta (Frente)' }, { cat: 'horizontal_pull', ex: 'Remada Curvada (Barra)' }, { cat: 'horizontal_pull', ex: 'Remada Baixa (Triângulo)' }, { cat: 'isolation_delt', ex: 'Face Pull' }, { cat: 'biceps', ex: 'Rosca Direta (Barra)' }, { cat: 'biceps', ex: 'Rosca Martelo' }] },
+                    { id: 'legs', name: 'Pernas Completo', default_exercises: [{ cat: 'squat_pattern', ex: 'Agachamento Livre' }, { cat: 'squat_pattern', ex: 'Leg Press 45' }, { cat: 'hinge_pattern', ex: 'Stiff' }, { cat: 'isolation_leg', ex: 'Cadeira Extensora' }, { cat: 'isolation_leg', ex: 'Mesa Flexora' }, { cat: 'calves', ex: 'Panturrilha em Pé' }] }
+                ]
+            },
+            'upper_lower': {
+                name: 'Upper / Lower',
+                desc: 'Foco em força e descanso.',
+                days: [
+                    { id: 'upper', name: 'Superiores', default_exercises: [{ cat: 'horizontal_push', ex: 'Supino Reto (Barra)' }, { cat: 'horizontal_pull', ex: 'Remada Curvada (Barra)' }, { cat: 'vertical_push', ex: 'Desenvolvimento Militar (Barra)' }, { cat: 'vertical_pull', ex: 'Barra Fixa' }, { cat: 'triceps', ex: 'Tríceps Testa' }, { cat: 'biceps', ex: 'Rosca Direta (Barra)' }] },
+                    { id: 'lower', name: 'Inferiores', default_exercises: [{ cat: 'squat_pattern', ex: 'Agachamento Livre' }, { cat: 'hinge_pattern', ex: 'Levantamento Terra' }, { cat: 'squat_pattern', ex: 'Passada' }, { cat: 'isolation_leg', ex: 'Cadeira Extensora' }, { cat: 'calves', ex: 'Panturrilha Sentado' }, { cat: 'abs', ex: 'Abdominal Infra' }] }
+                ]
+            },
+            'arnold': {
+                name: 'Arnold Split',
+                desc: 'Peito+Costas, Ombros+Braços.',
+                days: [
+                    { id: 'chest_back', name: 'Peito e Costas', default_exercises: [{ cat: 'horizontal_push', ex: 'Supino Reto (Barra)' }, { cat: 'horizontal_pull', ex: 'Barra Fixa' }, { cat: 'incline_push', ex: 'Supino Inclinado (Halteres)' }, { cat: 'horizontal_pull', ex: 'Remada Unilateral (Serrote)' }, { cat: 'isolation_chest', ex: 'Crucifixo (Halteres)' }] },
+                    { id: 'delt_arm', name: 'Ombros e Braços', default_exercises: [{ cat: 'vertical_push', ex: 'Desenvolvimento (Halteres)' }, { cat: 'isolation_delt', ex: 'Elevação Lateral (Polia)' }, { cat: 'biceps', ex: 'Rosca Direta (Barra)' }, { cat: 'triceps', ex: 'Tríceps Francês' }, { cat: 'biceps', ex: 'Rosca Scott' }, { cat: 'triceps', ex: 'Tríceps Polia (Corda)' }] },
+                    { id: 'leg', name: 'Pernas', default_exercises: [{ cat: 'squat_pattern', ex: 'Agachamento Livre' }, { cat: 'hinge_pattern', ex: 'RDL (Romanian Deadlift)' }, { cat: 'squat_pattern', ex: 'Leg Press 45' }, { cat: 'isolation_leg', ex: 'Cadeira Extensora' }, { cat: 'isolation_leg', ex: 'Mesa Flexora' }] }
+                ]
+            }
+        };
+
+        // ==========================================
+        // ESTADO GLOBAL DO APP
+        // ==========================================
+        
+        let appState = {
+            currentPlanKey: null,
+            tempWorkoutSetup: null,
+            activeWorkout: null,
+            history: JSON.parse(localStorage.getItem('hyperHistory')) || [],
+            settings: { theme: 'dark' }
+        };
+
+        function saveHistory() {
+            localStorage.setItem('hyperHistory', JSON.stringify(appState.history));
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById("toast");
+            toast.innerText = message;
+            toast.className = "show";
+            setTimeout(function(){ toast.className = toast.className.replace("show", ""); }, 3000);
+        }
+
+        // ==========================================
+        // ROTEAMENTO & VIEWS
+        // ==========================================
+
+        function router(view, params = null) {
+            const app = document.getElementById('app');
+            app.innerHTML = '';
+            
+            document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('text-blue-400'));
+            
+            if (view === 'home') {
+                renderHome(app);
+                document.querySelectorAll('.nav-btn')[0].classList.add('text-blue-400');
+            }
+            else if (view === 'plan_days') renderPlanDays(app, params);
+            else if (view === 'workout_setup') renderWorkoutSetup(app, params);
+            else if (view === 'active_session') renderActiveSession(app);
+            else if (view === 'result') renderResult(app, params);
+            else if (view === 'history') {
+                renderHistory(app);
+                document.querySelectorAll('.nav-btn')[1].classList.add('text-blue-400');
+            }
+            else if (view === 'settings') {
+                renderSettings(app);
+                document.querySelectorAll('.nav-btn')[2].classList.add('text-blue-400');
+            }
+        }
+
+        // 1. HOME VIEW
+        function renderHome(container) {
+            let html = `
+            <div class="fade-in pb-20">
+                <div class="mb-6">
+                    <h2 class="text-2xl font-bold text-white mb-1">Escolha sua Estratégia</h2>
+                    <p class="text-gray-400 text-sm">Selecione um plano baseado na ciência.</p>
+                </div>`;
+            
+            if (appState.history.length > 0) {
+                const last = appState.history[0];
+                html += `
+                <div onclick="repeatLastWorkout()" class="mb-8 p-4 bg-gradient-to-r from-blue-900 to-gray-800 rounded-xl border border-blue-700 cursor-pointer shadow-lg active:scale-95 transition transform">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="bg-blue-600 text-xs font-bold px-2 py-1 rounded text-white">REPETIR ÚLTIMO</span>
+                        <span class="text-xs text-blue-200">${new Date(last.startTime).toLocaleDateString()}</span>
+                    </div>
+                    <h3 class="font-bold text-lg text-white">${last.dayName}</h3>
+                    <p class="text-xs text-gray-300 mt-1">${last.exercises.length} exercícios realizados</p>
+                </div>`;
+            }
+
+            for (const [key, plan] of Object.entries(WORKOUT_PLANS)) {
+                html += `
+                <div onclick="router('plan_days', '${key}')" class="card cursor-pointer border border-gray-700 hover:border-blue-500 group">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-xl font-bold text-blue-400 group-hover:text-blue-300">${plan.name}</h3>
+                        <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                    </div>
+                    <p class="text-gray-400 text-sm mt-2">${plan.desc}</p>
+                </div>`;
+            }
+            html += `</div>`;
+            container.innerHTML = html;
+        }
+
+        // 2. SELEÇÃO DE DIAS
+        function renderPlanDays(container, planKey) {
+            const plan = WORKOUT_PLANS[planKey];
+            let html = `
+            <div class="fade-in">
+                <button onclick="router('home')" class="mb-4 text-gray-400 text-sm flex items-center hover:text-white">
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg> Voltar
+                </button>
+                <h2 class="text-2xl font-bold mb-6">${plan.name}</h2>
+                <div class="space-y-3">`;
+
+            plan.days.forEach((day, idx) => {
+                html += `
+                <div onclick="initSetup('${planKey}', ${idx})" class="card cursor-pointer active:scale-95 flex items-center justify-between">
+                    <div>
+                        <h3 class="font-bold text-lg text-white">${day.name}</h3>
+                        <p class="text-xs text-gray-500">${day.default_exercises.length} Exercícios Padrão</p>
+                    </div>
+                    <div class="bg-gray-700 p-2 rounded-full">
+                        <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    </div>
+                </div>`;
+            });
+            html += `</div></div>`;
+            container.innerHTML = html;
+        }
+
+        // 3. SETUP
+        function initSetup(planKey, dayIndex) {
+            const dayData = WORKOUT_PLANS[planKey].days[dayIndex];
+            appState.tempWorkoutSetup = {
+                planName: WORKOUT_PLANS[planKey].name,
+                dayName: dayData.name,
+                exercises: dayData.default_exercises.map(item => ({
+                    name: item.ex,
+                    category: item.cat,
+                    sets: [{weight: '', reps: '', rpe: '', done: false}]
+                }))
+            };
+            router('workout_setup');
+        }
+
+        function renderWorkoutSetup(container) {
+            const setup = appState.tempWorkoutSetup;
+            let html = `
+            <div class="fade-in pb-24">
+                <h2 class="text-xl font-bold mb-2">Personalizar Treino</h2>
+                <p class="text-sm text-gray-400 mb-6">Toque para substituir por variação.</p>
+                
+                <div class="space-y-3 mb-8">`;
+            
+            setup.exercises.forEach((ex, idx) => {
+                const catName = EXERCISE_DB[ex.category] ? EXERCISE_DB[ex.category].name : 'Geral';
+                html += `
+                <div onclick="openSwapModal(${idx})" class="card border border-gray-700 hover:border-blue-500 cursor-pointer flex justify-between items-center group">
+                    <div>
+                        <p class="text-[10px] text-blue-400 uppercase tracking-wide font-bold mb-1">${catName}</p>
+                        <h3 class="font-bold text-white group-hover:text-blue-300 transition">${ex.name}</h3>
+                    </div>
+                    <svg class="w-5 h-5 text-gray-600 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>
+                </div>`;
+            });
+
+            html += `
+                </div>
+                <button onclick="startActiveSession()" class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-4 rounded-xl shadow-lg transform transition active:scale-95 flex justify-center items-center text-lg">
+                    INICIAR TREINO
+                </button>
+            </div>`;
+            container.innerHTML = html;
+        }
+
+        let currentSwapIndex = null;
+        function openSwapModal(index) {
+            currentSwapIndex = index;
+            const exData = appState.tempWorkoutSetup.exercises[index];
+            const categoryData = EXERCISE_DB[exData.category];
+            if(!categoryData) return alert("Este exercício não tem variações cadastradas.");
+            const listEl = document.getElementById('swap-list');
+            listEl.innerHTML = categoryData.exercises.map(exName => `
+                <div onclick="confirmSwap('${exName}')" class="p-3 rounded bg-gray-700 hover:bg-gray-600 cursor-pointer flex justify-between items-center ${exName === exData.name ? 'border border-blue-500' : ''}">
+                    <span class="text-white font-medium">${exName}</span>
+                    ${exName === exData.name ? '<span class="text-xs text-blue-400">Atual</span>' : ''}
+                </div>
+            `).join('');
+            document.getElementById('swap-modal').classList.remove('hidden');
+            document.getElementById('swap-modal').classList.add('flex');
+        }
+        function closeModal() {
+            document.getElementById('swap-modal').classList.add('hidden');
+            document.getElementById('swap-modal').classList.remove('flex');
+            currentSwapIndex = null;
+        }
+        function confirmSwap(newName) {
+            if (currentSwapIndex !== null) {
+                appState.tempWorkoutSetup.exercises[currentSwapIndex].name = newName;
+                router('workout_setup');
+            }
+            closeModal();
+        }
+
+        // 4. SESSÃO ATIVA (COM TIMER E CHECKBOXES)
+        function startActiveSession() {
+            appState.activeWorkout = JSON.parse(JSON.stringify(appState.tempWorkoutSetup));
+            appState.activeWorkout.startTime = Date.now();
+            router('active_session');
+        }
+
+        function repeatLastWorkout() {
+            if(appState.history.length === 0) return;
+            const last = appState.history[0];
+            const newSession = {
+                planName: last.planName,
+                dayName: last.dayName,
+                exercises: last.exercises.map(ex => ({
+                    name: ex.name,
+                    category: ex.category || 'unknown',
+                    sets: [{weight: '', reps: '', rpe: '', done: false}]
+                })),
+                startTime: Date.now()
+            };
+            appState.activeWorkout = newSession;
+            router('active_session');
+        }
+
+        // Lógica de Cores RPE
+        function getRpeClass(val) {
+            if (val >= 8) return 'rpe-high';
+            if (val >= 6) return 'rpe-med';
+            return 'rpe-low';
+        }
+
+        function renderActiveSession(container) {
+            const workout = appState.activeWorkout;
+            let html = `
+            <div class="fade-in pb-24">
+                <div class="sticky top-16 bg-gray-900 pt-2 pb-2 z-30 border-b border-gray-800 mb-4">
+                    <div class="flex justify-between items-end mb-2">
+                        <div>
+                            <h2 class="text-lg font-bold text-white leading-tight">${workout.dayName}</h2>
+                            <p class="text-xl text-blue-400 font-mono mt-1 font-bold" id="timer">00:00</p>
+                        </div>
+                        <button onclick="finishWorkout()" class="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow hover:bg-red-700">FINALIZAR</button>
+                    </div>
+                    <!-- REST TIMER TOOLBAR -->
+                    <div class="flex gap-2">
+                        <button onclick="startRestTimer(60)" class="flex-1 bg-gray-800 border border-gray-600 rounded py-1 text-xs text-gray-300 hover:bg-gray-700 hover:text-white transition">🕒 60s</button>
+                        <button onclick="startRestTimer(90)" class="flex-1 bg-gray-800 border border-gray-600 rounded py-1 text-xs text-gray-300 hover:bg-gray-700 hover:text-white transition">🕒 90s</button>
+                    </div>
+                </div>`;
+
+            workout.exercises.forEach((ex, exIdx) => {
+                html += `
+                <div class="card border border-gray-700 relative">
+                    <div class="mb-3">
+                        <h3 class="font-bold text-lg text-blue-300">${ex.name}</h3>
+                    </div>
+                    
+                    <div class="grid grid-cols-[30px_1fr_1fr_1fr_30px] gap-2 text-[10px] text-gray-500 uppercase font-bold text-center mb-2">
+                        <span>OK</span>
+                        <span>KG</span>
+                        <span>REPS</span>
+                        <span>RPE</span>
+                        <span></span>
+                    </div>
+
+                    <div id="sets-container-${exIdx}" class="space-y-2">`;
+                    
+                    ex.sets.forEach((set, setIdx) => {
+                        const rpeClass = getRpeClass(set.rpe);
+                        const rowOpacity = set.done ? 'opacity-50' : 'opacity-100';
+                        
+                        html += `
+                        <div class="grid grid-cols-[30px_1fr_1fr_1fr_30px] gap-2 items-center transition-opacity ${rowOpacity}">
+                            <!-- CHECKBOX -->
+                            <div class="flex justify-center">
+                                <div onclick="toggleSetDone(${exIdx}, ${setIdx})" class="custom-checkbox ${set.done ? 'checked' : ''}">
+                                    ${set.done ? '<svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>' : ''}
+                                </div>
+                            </div>
+
+                            <input type="number" placeholder="-" value="${set.weight}" onchange="updateSet(${exIdx}, ${setIdx}, 'weight', this.value)">
+                            <input type="number" placeholder="-" value="${set.reps}" onchange="updateSet(${exIdx}, ${setIdx}, 'reps', this.value)">
+                            <!-- RPE Colorido -->
+                            <input type="number" placeholder="-" value="${set.rpe}" class="${rpeClass}" oninput="updateSet(${exIdx}, ${setIdx}, 'rpe', this.value); this.className = getRpeClass(this.value);">
+                            
+                            <button onclick="removeSet(${exIdx}, ${setIdx})" class="text-gray-600 hover:text-red-500 flex justify-center">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                            </button>
+                        </div>`;
+                    });
+
+                html += `
+                    </div>
+                    <button onclick="addSet(${exIdx})" class="w-full mt-4 py-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 border-dashed rounded text-xs text-gray-400 font-bold uppercase tracking-widest">+ Série</button>
+                </div>`;
+            });
+            
+            html += `</div>`;
+            container.innerHTML = html;
+            
+            // Garantir que a função getRpeClass esteja disponível globalmente
+            window.getRpeClass = getRpeClass;
+            
+            startTimer();
+        }
+
+        window.updateSet = (exIdx, setIdx, field, val) => {
+            appState.activeWorkout.exercises[exIdx].sets[setIdx][field] = val;
+        };
+
+        window.toggleSetDone = (exIdx, setIdx) => {
+            const current = appState.activeWorkout.exercises[exIdx].sets[setIdx].done;
+            appState.activeWorkout.exercises[exIdx].sets[setIdx].done = !current;
+            renderActiveSession(document.getElementById('app')); // Re-render para atualizar visual
+        };
+        
+        window.addSet = (exIdx) => {
+            const prev = appState.activeWorkout.exercises[exIdx].sets;
+            const lastSet = prev[prev.length - 1];
+            prev.push({ weight: lastSet.weight, reps: lastSet.reps, rpe: '', done: false });
+            renderActiveSession(document.getElementById('app'));
+        };
+
+        window.removeSet = (exIdx, setIdx) => {
+            const sets = appState.activeWorkout.exercises[exIdx].sets;
+            if(sets.length > 1) {
+                // Confirmar apenas se tiver dados
+                const s = sets[setIdx];
+                if(s.weight || s.reps) {
+                    if(!confirm("Remover esta série com dados?")) return;
+                }
+                sets.splice(setIdx, 1);
+                renderActiveSession(document.getElementById('app'));
+            }
+        };
+
+        // Timer e Rest Timer
+        let timerInterval;
+        let restEndTime = null;
+
+        function startTimer() {
+            if(timerInterval) clearInterval(timerInterval);
+            const start = appState.activeWorkout.startTime;
+            const el = document.getElementById('timer');
+            
+            timerInterval = setInterval(() => {
+                if(!el) return;
+                
+                // Lógica do Descanso
+                if(restEndTime && Date.now() < restEndTime) {
+                    const diff = Math.ceil((restEndTime - Date.now()) / 1000);
+                    el.innerText = `Descanso: ${diff}s`;
+                    el.classList.add('text-green-400');
+                    el.classList.remove('text-blue-400');
+                } else {
+                    if(restEndTime) {
+                        restEndTime = null; // Acabou o descanso
+                        if(navigator.vibrate) navigator.vibrate([200, 100, 200]);
+                        showToast("Descanso Finalizado! Volte ao treino.");
+                    }
+                    const diff = Math.floor((Date.now() - start) / 1000);
+                    const m = Math.floor(diff / 60).toString().padStart(2, '0');
+                    const s = (diff % 60).toString().padStart(2, '0');
+                    el.innerText = `${m}:${s}`;
+                    el.classList.remove('text-green-400');
+                    el.classList.add('text-blue-400');
+                }
+            }, 1000);
+        }
+
+        window.startRestTimer = (seconds) => {
+            restEndTime = Date.now() + (seconds * 1000);
+            showToast(`Descanso de ${seconds}s iniciado`);
+        };
+
+        // 5. FINALIZAÇÃO
+        function finishWorkout() {
+            if(!confirm("Finalizar treino?")) return;
+            clearInterval(timerInterval);
+            
+            const workout = appState.activeWorkout;
+            workout.endTime = Date.now();
+            workout.duration = Math.floor((workout.endTime - workout.startTime) / 1000 / 60);
+            workout.analysis = analyzeWorkout(workout);
+            
+            appState.history.unshift(workout);
+            saveHistory();
+            appState.activeWorkout = null;
+            
+            showToast("Treino salvo com sucesso!");
+            router('result', workout);
+        }
+
+        function analyzeWorkout(workout) {
+            let totalSets = 0;
+            let hardSets = 0;
+            let volume = 0;
+            
+            workout.exercises.forEach(ex => {
+                ex.sets.forEach(s => {
+                    const w = parseFloat(s.weight) || 0;
+                    const r = parseFloat(s.reps) || 0;
+                    const rpe = parseFloat(s.rpe) || 0;
+                    if(w > 0 && r > 0) {
+                        totalSets++;
+                        volume += w * r;
+                        if(rpe >= 8) hardSets++;
+                    }
+                });
+            });
+
+            let grade = 'C';
+            let feedback = [];
+            const intensity = totalSets > 0 ? hardSets / totalSets : 0;
+            
+            if(intensity > 0.7) { grade = 'S'; feedback.push("🔥 Intensidade Brutal! RPE alto na maioria das séries."); } 
+            else if (intensity > 0.4) { grade = 'A'; feedback.push("✅ Bom trabalho. Intensidade decente."); } 
+            else { grade = 'B'; feedback.push("⚠️ Dica: Aumente a carga ou vá mais perto da falha."); }
+
+            if(totalSets < 8) feedback.push("📉 Volume baixo. Considere mais exercícios.");
+            
+            return { grade, feedback, volume, totalSets };
+        }
+
+        function renderResult(container, workout) {
+            const colors = { 'S': 'text-purple-400', 'A': 'text-green-400', 'B': 'text-blue-400', 'C': 'text-yellow-400' };
+            const color = colors[workout.analysis.grade] || 'text-white';
+
+            let html = `
+            <div class="fade-in pt-6 pb-20 text-center">
+                <div class="mb-6">
+                    <p class="text-gray-400 uppercase text-xs tracking-widest mb-2">Relatório do Treino</p>
+                    <div class="inline-block p-8 rounded-full bg-gray-800 border-4 border-gray-700 shadow-2xl mb-4">
+                        <h1 class="text-6xl font-black ${color}">${workout.analysis.grade}</h1>
+                    </div>
+                    <p class="text-white font-bold text-xl">${workout.duration} minutos</p>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 mb-8 text-left">
+                    <div class="card bg-gray-800 mb-0">
+                        <p class="text-xs text-gray-500 uppercase">Volume</p>
+                        <p class="text-xl font-bold text-white">${(workout.analysis.volume / 1000).toFixed(1)}t</p>
+                    </div>
+                    <div class="card bg-gray-800 mb-0">
+                        <p class="text-xs text-gray-500 uppercase">Séries Válidas</p>
+                        <p class="text-xl font-bold text-white">${workout.analysis.totalSets}</p>
+                    </div>
+                </div>
+
+                <div class="space-y-3 mb-8 text-left">
+                    ${workout.analysis.feedback.map(f => `
+                        <div class="p-3 bg-gray-800 border-l-4 border-blue-500 rounded text-sm text-gray-300">${f}</div>
+                    `).join('')}
+                </div>
+
+                <button onclick="router('home')" class="w-full bg-gray-700 hover:bg-gray-600 py-4 rounded-xl font-bold text-white mb-20">VOLTAR AO INÍCIO</button>
+            </div>`;
+            container.innerHTML = html;
+        }
+
+        // 6. HISTÓRICO
+        function renderHistory(container) {
+            if(appState.history.length === 0) {
+                container.innerHTML = `<div class="fade-in text-center mt-32 text-gray-500"><p>Nenhum treino registrado.</p></div>`;
+                return;
+            }
+            let html = `<div class="fade-in pb-20"><h2 class="text-2xl font-bold mb-6">Seu Histórico</h2><div class="space-y-4">`;
+            appState.history.forEach(w => {
+                const date = new Date(w.startTime);
+                html += `
+                <div class="card relative overflow-hidden">
+                    <div class="absolute right-0 top-0 p-2 opacity-10">
+                        <span class="text-6xl font-black">${w.analysis.grade}</span>
+                    </div>
+                    <div class="relative z-10">
+                        <div class="flex justify-between items-baseline mb-1">
+                            <h3 class="font-bold text-white text-lg">${w.dayName}</h3>
+                            <span class="text-xs text-gray-400">${date.toLocaleDateString()}</span>
+                        </div>
+                        <p class="text-sm text-gray-400 mb-2">${w.duration} min • ${(w.analysis.volume/1000).toFixed(1)} ton</p>
+                    </div>
+                </div>`;
+            });
+            html += `</div></div>`;
+            container.innerHTML = html;
+        }
+
+        // 7. SETTINGS & BACKUP (NOVA FUNCIONALIDADE)
+        function renderSettings(container) {
+            const totalWorkouts = appState.history.length;
+            const totalTon = appState.history.reduce((acc, curr) => acc + (curr.analysis.volume || 0), 0) / 1000;
+            
+            container.innerHTML = `
+            <div class="fade-in pb-20">
+                <h2 class="text-2xl font-bold mb-6">Dados & Estatísticas</h2>
+                
+                <div class="grid grid-cols-2 gap-4 mb-8">
+                    <div class="card text-center py-6">
+                        <p class="text-3xl font-bold text-blue-500">${totalWorkouts}</p>
+                        <p class="text-[10px] uppercase text-gray-500 tracking-widest mt-1">Treinos</p>
+                    </div>
+                    <div class="card text-center py-6">
+                        <p class="text-3xl font-bold text-purple-500">${totalTon.toFixed(0)}</p>
+                        <p class="text-[10px] uppercase text-gray-500 tracking-widest mt-1">Toneladas</p>
+                    </div>
+                </div>
+
+                <!-- BACKUP SECTION (SUBSTITUI LOGIN) -->
+                <div class="card border border-blue-900/50">
+                    <h3 class="text-blue-400 font-bold mb-2">Backup de Dados</h3>
+                    <p class="text-xs text-gray-400 mb-4">Como não usamos servidor (privacidade total), baixe seus dados para não perder se trocar de celular.</p>
+                    
+                    <div class="flex gap-2">
+                        <button onclick="downloadBackup()" class="flex-1 bg-blue-600 hover:bg-blue-500 py-2 rounded text-white text-sm font-bold shadow"><svg class="inline w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg> Baixar Backup</button>
+                        
+                        <label class="flex-1 bg-gray-700 hover:bg-gray-600 py-2 rounded text-white text-sm font-bold shadow text-center cursor-pointer border border-gray-600">
+                            <svg class="inline w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg> Restaurar
+                            <input type="file" class="hidden" onchange="restoreBackup(this)">
+                        </label>
+                    </div>
+                </div>
+
+                <div class="card bg-red-900/20 border border-red-900/50 mt-4">
+                    <h3 class="text-red-500 font-bold mb-2">Zona de Perigo</h3>
+                    <button onclick="if(confirm('Tem certeza absoluta? Isso apaga tudo.')){localStorage.removeItem('hyperHistory'); location.reload();}" class="w-full py-2 bg-red-600 hover:bg-red-700 rounded text-white text-sm font-bold">RESETAR APP</button>
+                </div>
+            </div>`;
+        }
+
+        // Lógica de Backup
+        window.downloadBackup = () => {
+            const dataStr = JSON.stringify(appState.history);
+            const blob = new Blob([dataStr], {type: "application/json"});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `hyperscience_backup_${new Date().toISOString().slice(0,10)}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            showToast("Backup baixado com sucesso!");
+        };
+
+        window.restoreBackup = (input) => {
+            const file = input.files[0];
+            if(!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if(Array.isArray(data)) {
+                        appState.history = data;
+                        saveHistory();
+                        showToast("Dados restaurados!");
+                        router('history');
+                    } else {
+                        alert("Arquivo inválido.");
+                    }
+                } catch(err) {
+                    alert("Erro ao ler arquivo.");
+                }
+            };
+            reader.readAsText(file);
+        };
+
+        // INIT
+        document.addEventListener('DOMContentLoaded', () => {
+            router('home');
+        });
+
+    </script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js')
+                .then(reg => console.log('SW registrado', reg))
+                .catch(err => console.log('Erro SW', err));
+        }
+    </script>
 </body>
 </html>
