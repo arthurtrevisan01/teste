@@ -800,5 +800,31 @@
                 .catch(err => console.log('Erro SW', err));
         }
     </script>
+function renderGraficoHistorico() {
+
+  const historico = JSON.parse(localStorage.getItem("historicoTreinos")) || [];
+
+  const labels = historico.map((t, i) => `Treino ${i + 1}`);
+  const volumes = historico.map(t => {
+    return t.exercicios.reduce((total, ex) => {
+      return total + ex.series.reduce((soma, s) => soma + (s.peso * s.reps), 0);
+    }, 0);
+  });
+
+  const ctx = document.getElementById("graficoHistorico");
+
+  new Chart(ctx, {
+    type: "line",
+    data: {
+      labels,
+      datasets: [{
+        label: "Volume Total",
+        data: volumes,
+        borderWidth: 2,
+        tension: 0.2
+      }]
+    }
+  });
+}
 </body>
 </html>
