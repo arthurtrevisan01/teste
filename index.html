@@ -584,36 +584,58 @@
             router('result', workout);
         }
 
-        function analyzeWorkout(workout) {
-            let totalSets = 0;
-            let hardSets = 0;
-            let volume = 0;
-            
-            workout.exercises.forEach(ex => {
-                ex.sets.forEach(s => {
-                    const w = parseFloat(s.weight) || 0;
-                    const r = parseFloat(s.reps) || 0;
-                    const rpe = parseFloat(s.rpe) || 0;
-                    if(w > 0 && r > 0) {
-                        totalSets++;
-                        volume += w * r;
-                        if(rpe >= 8) hardSets++;
-                    }
-                });
-            });
+       function gerarRelatorio(treino) {
 
-            let grade = 'C';
-            let feedback = [];
-            const intensity = totalSets > 0 ? hardSets / totalSets : 0;
-            
-            if(intensity > 0.7) { grade = 'S'; feedback.push("🔥 Intensidade Brutal! RPE alto na maioria das séries."); } 
-            else if (intensity > 0.4) { grade = 'A'; feedback.push("✅ Bom trabalho. Intensidade decente."); } 
-            else { grade = 'B'; feedback.push("⚠️ Dica: Aumente a carga ou vá mais perto da falha."); }
+  const duracaoMin = (treino.fim - treino.inicio) / 60000;
 
-            if(totalSets < 8) feedback.push("📉 Volume baixo. Considere mais exercícios.");
-            
-            return { grade, feedback, volume, totalSets };
-        }
+  let volumeTotal = 0;
+  let volumeEfetivo = 0;
+  let totalSets = 0;
+  let setsEfetivos = 0;
+  let somaRPE = 0;
+
+  treino.exercicios.forEach(ex => {
+    ex.series.forEach(s => {
+      const vol = s.peso * s.reps;
+      volumeTotal += vol;
+      totalSets++;
+      somaRPE += s.rpe;
+
+      if (s.rpe >= 7) {
+        volumeEfetivo += vol;
+        setsEfetivos++;
+      }
+    });
+  });
+
+  const mediaRPE = totalSets ? somaRPE / totalSets : 0;
+  const densidade = duracaoMin ? volumeTotal / duracaoMin : 0;
+  const taxaEfetiva = totalSets ? (setsEfetivos / totalSets) * 100 : 0;
+
+  // Estimativa simples de fadiga
+  const fadiga =
+    (mediaRPE * 0.6) +
+    (taxaEfetiva * 0.3) +
+    (densidade / 100 * 0.1);
+
+  let classificacao = "Treino Moderado";
+
+  if (fadiga > 12) classificacao = "Altamente Exigente";
+  else if (fadiga > 9) classificacao = "Intenso";
+  else if (fadiga < 6) classificacao = "Leve";
+
+  return {
+    duracaoMin: duracaoMin.toFixed(1),
+    volumeTotal,
+    volumeEfetivo,
+    setsEfetivos,
+    mediaRPE: mediaRPE.toFixed(2),
+    densidade: densidade.toFixed(1),
+    taxaEfetiva: taxaEfetiva.toFixed(1),
+    fadiga: fadiga.toFixed(1),
+    classificacao
+  };
+}
 
         function renderResult(container, workout) {
             const colors = { 'S': 'text-purple-400', 'A': 'text-green-400', 'B': 'text-blue-400', 'C': 'text-yellow-400' };
